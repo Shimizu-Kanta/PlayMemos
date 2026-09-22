@@ -14,3 +14,68 @@ html {
 body {
   font-family: var(--font-sans);
 }
+
+/* ---------- FullCalendar の見た目をアプリに合わせる ---------- */
+.pm-calendar .fc {
+  --fc-border-color: #e2e8f0;
+  --fc-today-bg-color: #eff6ff;
+  --fc-page-bg-color: #ffffff;
+  font-size: 13px;
+}
+
+.pm-calendar .fc .fc-col-header-cell-cushion {
+  padding: 6px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-decoration: none;
+}
+
+.pm-calendar .fc .fc-daygrid-day-number {
+  padding: 4px 6px;
+  font-size: 12px;
+  color: #475569;
+  text-decoration: none;
+}
+
+.pm-calendar .fc .fc-day-sat .fc-daygrid-day-number {
+  color: #2563eb;
+}
+
+.pm-calendar .fc .fc-day-sun .fc-daygrid-day-number {
+  color: #dc2626;
+}
+
+.pm-calendar .fc .fc-daygrid-day-frame {
+  min-height: 5.5rem;
+}
+
+.pm-calendar .fc .fc-daygrid-day {
+  cursor: pointer;
+}
+
+.pm-calendar .fc .fc-daygrid-day:hover {
+  background-color: #f8fafc;
+}
+
+.pm-calendar .fc .fc-day-other .fc-daygrid-day-top {
+  opacity: 0.4;
+}
+
+/* 選択中の日 */
+.pm-calendar .fc .pm-day-selected {
+  background-color: #e2e8f0;
+  box-shadow: inset 0 0 0 2px #0f172a;
+}
+
+.pm-calendar .fc .fc-daygrid-event {
+  margin-top: 2px;
+  border: none;
+  border-radius: 4px;
+  background-color: #1e293b;
+  color: #ffffff;
+}
+
+.pm-calendar .fc .fc-daygrid-event:hover {
+  background-color: #334155;
+}

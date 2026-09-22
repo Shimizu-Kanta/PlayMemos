@@ -1,3 +1,4 @@
+import type { Participant, SessionDetail } from "@/lib/database.types";
 import { createClient } from "@/lib/supabase/server";
 
 import { byName } from "./games";
@@ -46,4 +47,52 @@ export async function getPersonOptions(): Promise<PersonOption[]> {
   const { data, error } = await supabase.from("person").select("id, name");
   if (error) throw error;
   return (data ?? []).sort((a, b) => byName(a.name, b.name));
+}
+
+/** session_detail.participants（jsonb）を型付きの配列にする */
+function toParticipants(value: unknown): Participant[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (typeof item !== "object" || item === null) return [];
+    const record = item as Record<string, unknown>;
+    if (typeof record.id !== "string" || typeof record.name !== "string") {
+      return [];
+    }
+    return [
+      {
+        id: record.id,
+        name: record.name,
+        discord_id:
+          typeof record.discord_id === "string" ? record.discord_id : null,
+      },
+    ];
+  });
+}
+
+/** 期間内の記録を、日付＋その日の並び順で取得する */
+export async function getSessionsInRange(
+  from: string,
+  to: string,
+): Promise<SessionDetail[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("session_detail")
+    .select("*")
+    .gte("played_on", from)
+    .lte("played_on", to)
+    .order("played_on")
+    .order("sort_order");
+
+  if (error) throw error;
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    played_on: row.played_on,
+    sort_order: row.sort_order,
+    memo: row.memo,
+    game_id: row.game_id,
+    game_title: row.game_title,
+    tags: row.tags ?? [],
+    participants: toParticipants(row.participants),
+  }));
 }

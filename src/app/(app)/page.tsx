@@ -1,21 +1,49 @@
-import Link from "next/link";
+import { getTags } from "@/lib/data/games";
+import { getGameOptions, getPersonOptions, getSessionsInRange } from "@/lib/data/sessions";
+import { currentMonth, isMonthString, monthRange } from "@/lib/date";
 
-export default function CalendarPage() {
+import { CalendarView, type Filters } from "./calendar-view";
+
+function first(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+/** "a,b,c" を配列にする（空要素と重複は落とす） */
+function list(value: string | string[] | undefined): string[] {
+  const raw = first(value);
+  if (!raw) return [];
+  return [...new Set(raw.split(",").map((v) => v.trim()).filter(Boolean))];
+}
+
+export default async function CalendarPage({ searchParams }: PageProps<"/">) {
+  const params = await searchParams;
+
+  const requested = first(params.month);
+  const month =
+    requested && isMonthString(requested) ? requested : currentMonth();
+
+  const filters: Filters = {
+    tags: list(params.tags),
+    gameIds: list(params.games),
+    personIds: list(params.people),
+  };
+
+  const { from, to } = monthRange(month);
+  const [sessions, tags, games, people] = await Promise.all([
+    getSessionsInRange(from, to),
+    getTags(),
+    getGameOptions(),
+    getPersonOptions(),
+  ]);
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-bold tracking-tight">カレンダー</h1>
-        <Link
-          href="/sessions/new"
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
-        >
-          記録する
-        </Link>
-      </div>
-
-      <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">
-        カレンダー表示はフェーズ4で実装します。
-      </div>
-    </div>
+    <CalendarView
+      month={month}
+      sessions={sessions}
+      tags={tags}
+      games={games}
+      people={people}
+      initialFilters={filters}
+    />
   );
 }

@@ -49,3 +49,46 @@ export function formatDateLong(iso: string) {
   const d = parseISODate(iso);
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日(${WEEKDAYS[d.getDay()]})`;
 }
+
+/* ---------- 月（"YYYY-MM"）の扱い ---------- */
+
+/** "YYYY-MM" として成立するか */
+export function isMonthString(value: string): boolean {
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
+}
+
+/** "2026-09-23" → "2026-09" */
+export function monthOf(iso: string) {
+  return iso.slice(0, 7);
+}
+
+/** 今月（APP_TIME_ZONE 基準） */
+export function currentMonth() {
+  return monthOf(todayISO());
+}
+
+/** "2026-09" を n ヶ月ずらす */
+export function addMonths(month: string, n: number) {
+  const [y, m] = month.split("-").map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/**
+ * その月のカレンダーに映る日付の範囲。
+ * 月表示は前後の月のマスも出るので、少し広めに取る。
+ */
+export function monthRange(month: string) {
+  const [y, m] = month.split("-").map(Number);
+  const start = new Date(y, m - 1, 1);
+  const end = new Date(y, m, 0); // 月末
+  start.setDate(start.getDate() - 7);
+  end.setDate(end.getDate() + 7);
+  return { from: toISODate(start), to: toISODate(end) };
+}
+
+/** "2026-09" → "2026年9月" */
+export function formatMonth(month: string) {
+  const [y, m] = month.split("-").map(Number);
+  return `${y}年${m}月`;
+}
