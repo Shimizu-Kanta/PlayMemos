@@ -14,9 +14,28 @@ export function toISODate(date: Date) {
   return `${y}-${m}-${d}`;
 }
 
-/** 今日の日付（ローカル時刻基準） */
+/**
+ * このアプリが「今日」を決めるときのタイムゾーン。
+ * Vercel など UTC のサーバーで動いても日付がずれないように固定する。
+ */
+export const APP_TIME_ZONE = "Asia/Tokyo";
+
+/** 今日の日付（APP_TIME_ZONE 基準） */
 export function todayISO() {
-  return toISODate(new Date());
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: APP_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+/** "YYYY-MM-DD" として成立するか（存在しない日付も弾く） */
+export function isISODate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  return toISODate(parseISODate(value)) === value;
 }
 
 /** "2026-09-23" → "2026/9/23" */

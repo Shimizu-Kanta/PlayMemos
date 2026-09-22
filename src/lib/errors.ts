@@ -5,8 +5,15 @@ export type ActionResult =
   | { ok: true; message?: string }
   | { ok: false; message: string };
 
-export const ok = (message?: string): ActionResult => ({ ok: true, message });
-export const fail = (message: string): ActionResult => ({ ok: false, message });
+// 戻り値の型を広げすぎないことで、呼び出し側で成否を絞り込めるようにする
+export const ok = (message?: string): { ok: true; message?: string } => ({
+  ok: true,
+  message,
+});
+export const fail = (message: string): { ok: false; message: string } => ({
+  ok: false,
+  message,
+});
 
 /** PostgreSQL のエラーコードを日本語のメッセージに変換する */
 export function describeError(
