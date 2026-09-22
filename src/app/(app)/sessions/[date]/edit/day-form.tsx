@@ -26,11 +26,12 @@ type Row = {
   memo: string;
 };
 
-let keySeq = 0;
-const nextKey = () => `row-${(keySeq += 1)}`;
+// ユーザー操作で増やした行のキー。この採番はブラウザでしか走らない。
+let addedRowSeq = 0;
+const newRowKey = () => `added-${(addedRowSeq += 1)}`;
 
-const emptyRow = (): Row => ({
-  key: nextKey(),
+const emptyRow = (key: string = newRowKey()): Row => ({
+  key,
   sessionId: null,
   gameId: null,
   gameTitle: "",
@@ -38,10 +39,12 @@ const emptyRow = (): Row => ({
   memo: "",
 });
 
-const toRow = (row: DayRow): Row => ({ key: nextKey(), ...row });
+// 初期表示のキーはデータから決める。
+// 採番だとサーバーとブラウザで値がずれて、ハイドレーションが崩れる。
+const toRow = (row: DayRow): Row => ({ key: `session-${row.sessionId}`, ...row });
 
 const buildRows = (initial: DayRow[]): Row[] =>
-  initial.length > 0 ? initial.map(toRow) : [emptyRow()];
+  initial.length > 0 ? initial.map(toRow) : [emptyRow("blank")];
 
 /** 変更されたかを比べるための、key を含まない表現 */
 const snapshot = (rows: Row[]) =>

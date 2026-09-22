@@ -45,22 +45,42 @@ export async function createPerson(
   return ok(`${name} さんを追加しました。`);
 }
 
-export async function renamePerson(
+/** 詳細ページからの編集（名前・Discord ID・メモ） */
+export async function updatePerson(
   id: string,
-  rawName: string,
+  _prev: ActionResult | null,
+  formData: FormData,
 ): Promise<ActionResult> {
-  const name = trimmed(rawName);
+  const name = trimmed(formData.get("name"));
   if (!name) return fail("名前を入力してください。");
 
   const lengthError = checkLength(name, NAME_MAX, "名前");
   if (lengthError) return fail(lengthError);
 
+  const discordId = trimmed(formData.get("discord_id"));
+  if (discordId) {
+    const discordError = checkDiscordId(discordId);
+    if (discordError) return fail(discordError);
+  }
+
+  const memo = trimmed(formData.get("memo"));
+
   const supabase = await createClient();
-  const { error } = await supabase.from("person").update({ name }).eq("id", id);
-  if (error) return fail(describeError(error));
+  const { error } = await supabase
+    .from("person")
+    .update({ name, discord_id: discordId, memo })
+    .eq("id", id);
+  if (error) {
+    return fail(
+      describeError(error, {
+        "23505": "その Discord ID の友人は既に登録されています。",
+      }),
+    );
+  }
 
   revalidate();
-  return ok();
+  revalidatePath(`/people/${id}`);
+  return ok("保存しました。");
 }
 
 export async function deletePerson(id: string): Promise<ActionResult> {

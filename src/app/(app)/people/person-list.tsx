@@ -2,8 +2,9 @@
 
 import { useActionState } from "react";
 
+import Link from "next/link";
+
 import { InitialAvatar } from "@/components/avatar";
-import { EditableText } from "@/components/editable-text";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState, ErrorMessage } from "@/components/ui/message";
@@ -11,7 +12,7 @@ import { useActionRunner } from "@/components/use-action-runner";
 import type { PersonWithStats } from "@/lib/data/people";
 import { formatDate } from "@/lib/date";
 
-import { createPerson, deletePerson, renamePerson } from "./actions";
+import { createPerson, deletePerson } from "./actions";
 
 export function PersonList({ people }: { people: PersonWithStats[] }) {
   const [state, formAction, submitting] = useActionState(createPerson, null);
@@ -76,13 +77,12 @@ function PersonRow({ person }: { person: PersonWithStats }) {
         <div className="flex min-w-0 flex-1 items-start gap-2.5">
           <InitialAvatar name={person.name} />
           <div className="min-w-0 flex-1">
-            <EditableText
-              value={person.name}
-              maxLength={50}
-              ariaLabel="名前"
-              className="font-medium text-slate-900"
-              onSave={(next) => renamePerson(person.id, next)}
-            />
+            <Link
+              href={`/people/${person.id}`}
+              className="font-medium text-slate-900 underline-offset-2 hover:underline"
+            >
+              {person.name}
+            </Link>
             <p className="mt-0.5 text-xs text-slate-500">
               {person.playCount > 0 && person.lastPlayedOn
                 ? `${person.playCount}回 ・ 最後に遊んだ日 ${formatDate(person.lastPlayedOn)}`

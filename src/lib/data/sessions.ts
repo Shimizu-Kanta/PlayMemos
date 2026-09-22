@@ -85,7 +85,21 @@ export async function getSessionsInRange(
 
   if (error) throw error;
 
-  return (data ?? []).map((row) => ({
+  return (data ?? []).map(toSessionDetail);
+}
+
+/** session_detail の1行をアプリ側の型にする */
+function toSessionDetail(row: {
+  id: string;
+  played_on: string;
+  sort_order: number;
+  memo: string | null;
+  game_id: string;
+  game_title: string;
+  tags: string[] | null;
+  participants: unknown;
+}): SessionDetail {
+  return {
     id: row.id,
     played_on: row.played_on,
     sort_order: row.sort_order,
@@ -94,5 +108,25 @@ export async function getSessionsInRange(
     game_title: row.game_title,
     tags: row.tags ?? [],
     participants: toParticipants(row.participants),
-  }));
+  };
+}
+
+/** id を指定して記録を取得する（新しい日付から、同じ日は並び順どおり） */
+export async function getSessionsByIds(
+  ids: string[],
+  limit = 200,
+): Promise<SessionDetail[]> {
+  if (ids.length === 0) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("session_detail")
+    .select("*")
+    .in("id", ids)
+    .order("played_on", { ascending: false })
+    .order("sort_order", { ascending: true })
+    .limit(limit);
+
+  if (error) throw error;
+  return (data ?? []).map(toSessionDetail);
 }

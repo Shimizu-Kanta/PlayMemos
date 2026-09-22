@@ -1,6 +1,8 @@
+import type { SessionDetail } from "@/lib/database.types";
 import { createClient } from "@/lib/supabase/server";
 
 import { byName } from "./games";
+import { getSessionsByIds } from "./sessions";
 
 export type PersonWithStats = {
   id: string;
@@ -38,4 +40,36 @@ export async function getPeople(): Promise<PersonWithStats[]> {
       };
     })
     .sort((a, b) => byName(a.name, b.name));
+}
+
+/** 友人1件を取得する（見つからなければ null） */
+export async function getPerson(id: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("person")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+/** この人と一緒に遊んだ記録を新しい順に取得する */
+export async function getPersonSessions(
+  personId: string,
+  limit = 200,
+): Promise<SessionDetail[]> {
+  const supabase = await createClient();
+
+  const { data: links, error: linkError } = await supabase
+    .from("session_person")
+    .select("session_id")
+    .eq("person_id", personId);
+  if (linkError) throw linkError;
+
+  const ids = (links ?? []).map((l) => l.session_id);
+  if (ids.length === 0) return [];
+
+  return getSessionsByIds(ids, limit);
 }
