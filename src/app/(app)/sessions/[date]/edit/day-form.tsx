@@ -11,8 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { ErrorMessage } from "@/components/ui/message";
 import { useActionRunner } from "@/components/use-action-runner";
-import type { DayRow, GameOption, PersonOption } from "@/lib/data/sessions";
-import { formatDateLong, isISODate } from "@/lib/date";
+import type {
+  DayRow,
+  GameOption,
+  PersonOption,
+  PreviousMembers,
+} from "@/lib/data/sessions";
+import { formatDate, formatDateLong, isISODate } from "@/lib/date";
 
 import { findOrCreateGame, findOrCreatePerson, saveDay } from "../../actions";
 
@@ -71,9 +76,17 @@ type Props = {
   initialRows: DayRow[];
   games: GameOption[];
   people: PersonOption[];
+  /** この日より前で、いちばん最近の記録のメンバー */
+  previousMembers: PreviousMembers | null;
 };
 
-export function DayForm({ date, initialRows, games, people }: Props) {
+export function DayForm({
+  date,
+  initialRows,
+  games,
+  people,
+  previousMembers,
+}: Props) {
   const router = useRouter();
 
   const [rows, setRows] = useState<Row[]>(() => buildRows(initialRows));
@@ -129,6 +142,15 @@ export function DayForm({ date, initialRows, games, people }: Props) {
       [next[index], next[target]] = [next[target], next[index]];
       return next;
     });
+  }
+
+  /** 前回遊んだときのメンバーをこの行に入れる */
+  function applyPreviousMembers(key: string) {
+    if (!previousMembers) return;
+    const ids = previousMembers.participants.map((p) => p.id);
+    update((prev) =>
+      prev.map((r) => (r.key === key ? { ...r, participantIds: ids } : r)),
+    );
   }
 
   function copyParticipantsFromPrevious(index: number) {
@@ -386,20 +408,36 @@ export function DayForm({ date, initialRows, games, people }: Props) {
               </div>
 
               <div className="space-y-1">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-1">
                   <span className="text-xs font-medium text-slate-500">
                     参加者
                   </span>
-                  {index > 0 ? (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={pending}
-                      onClick={() => copyParticipantsFromPrevious(index)}
-                    >
-                      前の行の参加者をコピー
-                    </Button>
-                  ) : null}
+                  <div className="flex flex-wrap items-center gap-1">
+                    {previousMembers ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={pending}
+                        title={previousMembers.participants
+                          .map((p) => p.name)
+                          .join("、")}
+                        onClick={() => applyPreviousMembers(row.key)}
+                      >
+                        前回のメンバー（
+                        {formatDate(previousMembers.playedOn)}）
+                      </Button>
+                    ) : null}
+                    {index > 0 ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={pending}
+                        onClick={() => copyParticipantsFromPrevious(index)}
+                      >
+                        前の行をコピー
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
 
                 {row.participantIds.length > 0 ? (

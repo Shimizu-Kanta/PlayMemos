@@ -6,6 +6,7 @@ import {
   getDayRows,
   getGameOptions,
   getPersonOptions,
+  getPreviousMembers,
 } from "@/lib/data/sessions";
 import { isISODate } from "@/lib/date";
 
@@ -21,10 +22,11 @@ export default async function EditDayPage({
   const { date } = await params;
   if (!isISODate(date)) notFound();
 
-  const [rows, games, people] = await Promise.all([
+  const [rows, games, people, previousMembers] = await Promise.all([
     getDayRows(date),
     getGameOptions(),
     getPersonOptions(),
+    getPreviousMembers(date),
   ]);
 
   return (
@@ -45,6 +47,7 @@ export default async function EditDayPage({
         initialRows={rows}
         games={games}
         people={people}
+        previousMembers={previousMembers}
       />
     </div>
   );

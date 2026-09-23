@@ -17,7 +17,7 @@ export default async function GamesPage() {
       <div>
         <h1 className="text-xl font-bold tracking-tight">ゲーム・タグ</h1>
         <p className="mt-1 text-sm text-slate-500">
-          ゲーム名はクリックすると編集できます。
+          ゲーム名をクリックすると、名前の変更と遊んだ記録を見られます。
         </p>
       </div>
 

@@ -130,3 +130,53 @@ export async function getSessionsByIds(
   if (error) throw error;
   return (data ?? []).map(toSessionDetail);
 }
+
+/** そのゲームを遊んだ記録を新しい順に取得する */
+export async function getGameSessions(
+  gameId: string,
+  limit = 200,
+): Promise<SessionDetail[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("session_detail")
+    .select("*")
+    .eq("game_id", gameId)
+    .order("played_on", { ascending: false })
+    .order("sort_order", { ascending: true })
+    .limit(limit);
+
+  if (error) throw error;
+  return (data ?? []).map(toSessionDetail);
+}
+
+export type PreviousMembers = {
+  playedOn: string;
+  participants: Participant[];
+};
+
+/**
+ * 指定日より前で、いちばん最近の「参加者がいる記録」のメンバーを返す。
+ * 記録フォームの「前回のメンバー」に使う。
+ */
+export async function getPreviousMembers(
+  date: string,
+): Promise<PreviousMembers | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("session_detail")
+    .select("played_on, sort_order, participants")
+    .lt("played_on", date)
+    .order("played_on", { ascending: false })
+    .order("sort_order", { ascending: false })
+    .limit(10);
+
+  if (error) throw error;
+
+  for (const row of data ?? []) {
+    const participants = toParticipants(row.participants);
+    if (participants.length > 0) {
+      return { playedOn: row.played_on, participants };
+    }
+  }
+  return null;
+}

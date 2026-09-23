@@ -54,3 +54,25 @@ export async function getTags(): Promise<TagWithUsage[]> {
     }))
     .sort((a, b) => byName(a.name, b.name));
 }
+
+/** ゲーム1件をタグ・記録件数つきで取得する（見つからなければ null） */
+export async function getGame(id: string): Promise<GameWithTags | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("game")
+    .select("id, title, game_tag(tag(id, name)), session(count)")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+
+  return {
+    id: data.id,
+    title: data.title,
+    tags: (data.game_tag ?? [])
+      .flatMap((gt) => (gt.tag ? [gt.tag] : []))
+      .sort((a, b) => byName(a.name, b.name)),
+    sessionCount: data.session?.[0]?.count ?? 0,
+  };
+}

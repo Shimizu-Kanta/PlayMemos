@@ -2,7 +2,8 @@
 
 import { useActionState, useState } from "react";
 
-import { EditableText } from "@/components/editable-text";
+import Link from "next/link";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState, ErrorMessage } from "@/components/ui/message";
@@ -15,7 +16,6 @@ import {
   createTagAndAttach,
   deleteGame,
   detachTag,
-  renameGame,
 } from "./actions";
 
 export function GameList({
@@ -87,13 +87,12 @@ function GameRow({ game, tags }: { game: GameWithTags; tags: TagWithUsage[] }) {
     <li className="space-y-2 p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1 space-y-1.5">
-          <EditableText
-            value={game.title}
-            maxLength={100}
-            ariaLabel="ゲーム名"
-            className="font-medium text-slate-900"
-            onSave={(next) => renameGame(game.id, next)}
-          />
+          <Link
+            href={`/games/${game.id}`}
+            className="font-medium text-slate-900 underline-offset-2 hover:underline"
+          >
+            {game.title}
+          </Link>
 
           <div className="flex flex-wrap items-center gap-1.5">
             {game.tags.map((tag) => (
