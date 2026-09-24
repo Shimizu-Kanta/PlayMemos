@@ -151,3 +151,17 @@ export function relativeDayLabel(iso: string) {
   if (n === 1) return "昨日";
   return `${n}日前`;
 }
+
+/** "2026-09-20" → "9月20日(日)" */
+export function formatMonthDay(iso: string) {
+  const d = parseISODate(iso);
+  return `${d.getMonth() + 1}月${d.getDate()}日(${WEEKDAYS[d.getDay()]})`;
+}
+
+/** 曜日に応じた文字色（日曜=赤、土曜=青） */
+export function weekdayTextClass(iso: string) {
+  const dow = parseISODate(iso).getDay();
+  if (dow === 0) return "text-red-600";
+  if (dow === 6) return "text-blue-600";
+  return "text-slate-900";
+}

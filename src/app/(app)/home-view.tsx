@@ -20,6 +20,7 @@ import {
   todayISO,
 } from "@/lib/date";
 
+import { DayDetailPanel, DayDetailScreen } from "./day-detail";
 import { EmptyHome } from "./empty-home";
 import {
   CompactCalendar,
@@ -127,6 +128,7 @@ export function HomeView({
   const [selectedDate, setSelectedDate] = useState<string | null>(() =>
     defaultSelectedDate(month, monthSessions),
   );
+  const [detailDate, setDetailDate] = useState<string | null>(null);
   // スマホの表示切り替えは前回の選択を覚えておく
   const [view, changeView] = useLocalPreference(
     VIEW_STORAGE_KEY,
@@ -190,6 +192,28 @@ export function HomeView({
     for (const s of monthSessions) for (const p of s.participants) ids.add(p.id);
     return { count: monthSessions.length, people: ids.size };
   }, [monthSessions]);
+
+  function openDetail(date: string) {
+    setSelectedDate(date);
+    setDetailDate(date);
+  }
+
+  // 月を移動したら、その月の外の詳細は閉じたことにする
+  const activeDetail =
+    detailDate && (searching || monthOf(detailDate) === month)
+      ? detailDate
+      : null;
+
+  // 詳細はその日の記録を全部出す（絞り込みでは減らさない）
+  const detailSessions = useMemo(() => {
+    if (!activeDetail) return [];
+    const seen = new Set<string>();
+    return [...monthSessions, ...searchPool].filter((s) => {
+      if (s.played_on !== activeDetail || seen.has(s.id)) return false;
+      seen.add(s.id);
+      return true;
+    });
+  }, [activeDetail, monthSessions, searchPool]);
 
   const selectedPerson =
     filters.personIds.length === 1
@@ -300,28 +324,46 @@ export function HomeView({
           />
         </div>
 
-        <div className="flex flex-col gap-2">
-          <div className="flex items-baseline justify-between px-1">
-            <span className="text-sm font-bold">{listHeading}</span>
-            <span className="text-xs text-slate-500">
-              {searching ? `${listSessions.length}件` : "新しい順"}
-            </span>
-          </div>
-          <SessionList
-            sessions={listSessions}
-            selectedDate={selectedDate}
-            emptyText={
-              searching
-                ? "見つかりませんでした。"
-                : "この月の記録はまだありません。"
-            }
-            onSelect={setSelectedDate}
+        {activeDetail ? (
+          <DayDetailPanel
+            date={activeDetail}
+            sessions={detailSessions}
+            onBack={() => setDetailDate(null)}
           />
-        </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-baseline justify-between px-1">
+              <span className="text-sm font-bold">{listHeading}</span>
+              <span className="text-xs text-slate-500">
+                {searching ? `${listSessions.length}件` : "新しい順"}
+              </span>
+            </div>
+            <SessionList
+              sessions={listSessions}
+              selectedDate={selectedDate}
+              emptyText={
+                searching
+                  ? "見つかりませんでした。"
+                  : "この月の記録はまだありません。"
+              }
+              onSelect={openDetail}
+            />
+          </div>
+        )}
       </div>
 
-      {/* スマホ: リストとカレンダーを切り替える */}
-      <div className="space-y-3 lg:hidden">
+      {/* スマホ: 詳細を開いているあいだは 1 画面使う */}
+      {activeDetail ? (
+        <div className="lg:hidden">
+          <DayDetailScreen
+            date={activeDetail}
+            sessions={detailSessions}
+            onBack={() => setDetailDate(null)}
+          />
+        </div>
+      ) : null}
+
+      <div className={`space-y-3 lg:hidden ${activeDetail ? "hidden" : ""}`}>
         <div className="grid grid-cols-2 gap-0 rounded-[10px] bg-slate-100 p-[3px] text-center text-sm font-semibold">
           {(["list", "calendar"] as const).map((v) => (
             <button
@@ -355,6 +397,7 @@ export function HomeView({
                 date={selectedDate}
                 sessions={daySessions}
                 recordHref={buildHomeHref(month, filters, query, selectedDate)}
+                onOpen={() => openDetail(selectedDate)}
               />
             ) : null}
           </div>
@@ -370,12 +413,12 @@ export function HomeView({
               sessions={listSessions}
               selectedDate={selectedDate}
               large
+              onSelect={openDetail}
               emptyText={
                 searching
                   ? "見つかりませんでした。"
                   : "この月の記録はまだありません。"
               }
-              onSelect={setSelectedDate}
             />
           </div>
         )}
@@ -525,10 +568,12 @@ function SelectedDayCard({
   date,
   sessions,
   recordHref,
+  onOpen,
 }: {
   date: string;
   sessions: SessionDetail[];
   recordHref: string;
+  onOpen: () => void;
 }) {
   return (
     <div className="space-y-2">
@@ -550,9 +595,11 @@ function SelectedDayCard({
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
           {sessions.map((s, i) => (
-            <div
+            <button
               key={s.id}
-              className={`flex items-center gap-3 px-3.5 py-3 ${i === 0 ? "" : "border-t border-slate-100"}`}
+              type="button"
+              onClick={onOpen}
+              className={`flex w-full items-center gap-3 px-3.5 py-3 text-left ${i === 0 ? "" : "border-t border-slate-100"}`}
             >
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="text-[15px] font-semibold">
@@ -571,7 +618,7 @@ function SelectedDayCard({
                   />
                 ))}
               </span>
-            </div>
+            </button>
           ))}
         </div>
       )}
