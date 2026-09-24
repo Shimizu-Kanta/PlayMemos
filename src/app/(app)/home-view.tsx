@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { InitialAvatar, personPalette } from "@/components/avatar";
 import { useLocalPreference } from "@/components/use-local-preference";
 import type { PersonWithStats } from "@/lib/data/people";
+import type { GameOption, PreviousMembers } from "@/lib/data/sessions";
 import type { TagWithUsage } from "@/lib/data/games";
 import type { SessionDetail } from "@/lib/database.types";
 import {
@@ -26,6 +27,7 @@ import {
   buildDays,
   type DayBucket,
 } from "./month-calendar";
+import { RecordSheet } from "./record-sheet";
 import { SessionList } from "./session-list";
 
 export type Filters = {
@@ -44,6 +46,12 @@ type Props = {
   people: PersonWithStats[];
   initialFilters: Filters;
   hasAnySession: boolean;
+  /** 記録シートを開くか（?record=） */
+  recordOpen: boolean;
+  recordDate: string;
+  games: GameOption[];
+  recentGames: GameOption[];
+  latestMembers: PreviousMembers | null;
 };
 
 const VIEW_STORAGE_KEY = "playmemos:home-view";
@@ -54,9 +62,11 @@ export function buildHomeHref(
   month: string,
   filters: Filters,
   query: string,
+  record?: string,
 ) {
   const params = new URLSearchParams();
   params.set("month", month);
+  if (record) params.set("record", record);
   if (query) params.set("q", query);
   if (filters.tags.length > 0) params.set("tags", filters.tags.join(","));
   if (filters.personIds.length > 0) {
@@ -106,6 +116,11 @@ export function HomeView({
   people,
   initialFilters,
   hasAnySession,
+  recordOpen,
+  recordDate,
+  games,
+  recentGames,
+  latestMembers,
 }: Props) {
   const router = useRouter();
   const [filters, setFilters] = useState<Filters>(initialFilters);
@@ -188,8 +203,33 @@ export function HomeView({
     ).length;
   }, [monthSessions, selectedPerson]);
 
+  const sheet = recordOpen ? (
+    <RecordSheet
+      initialDate={recordDate}
+      people={people}
+      games={games}
+      recentGames={recentGames}
+      latestMembers={latestMembers}
+      onClose={() =>
+        router.replace(buildHomeHref(month, filters, query), { scroll: false })
+      }
+      onSaved={(saved) => {
+        setSelectedDate(saved);
+        router.replace(buildHomeHref(monthOf(saved), filters, query), {
+          scroll: false,
+        });
+        router.refresh();
+      }}
+    />
+  ) : null;
+
   if (!hasAnySession && !searching && !hasFilter) {
-    return <EmptyHome month={month} />;
+    return (
+      <>
+        <EmptyHome month={month} recordHref={buildHomeHref(month, filters, query, "1")} />
+        {sheet}
+      </>
+    );
   }
 
   const monthNav = (
@@ -311,7 +351,11 @@ export function HomeView({
               onSelect={setSelectedDate}
             />
             {selectedDate ? (
-              <SelectedDayCard date={selectedDate} sessions={daySessions} />
+              <SelectedDayCard
+                date={selectedDate}
+                sessions={daySessions}
+                recordHref={buildHomeHref(month, filters, query, selectedDate)}
+              />
             ) : null}
           </div>
         ) : (
@@ -338,11 +382,14 @@ export function HomeView({
       </div>
 
       <Link
-        href="/sessions/new"
+        href={buildHomeHref(month, filters, query, "1")}
+        scroll={false}
         className="fixed right-[18px] bottom-[calc(76px+env(safe-area-inset-bottom,0px))] z-30 rounded-full bg-slate-900 px-[22px] py-[15px] text-[15px] font-semibold text-white shadow-[0_6px_20px_rgba(15,23,42,.25)] lg:hidden"
       >
         ＋ 記録する
       </Link>
+
+      {sheet}
     </div>
   );
 }
@@ -477,16 +524,19 @@ function FilterBar({
 function SelectedDayCard({
   date,
   sessions,
+  recordHref,
 }: {
   date: string;
   sessions: SessionDetail[];
+  recordHref: string;
 }) {
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between px-1">
         <span className="text-[13px] font-bold">{formatDateLong(date)}</span>
         <Link
-          href={`/sessions/${date}/edit`}
+          href={sessions.length > 0 ? `/sessions/${date}/edit` : recordHref}
+          scroll={false}
           className="text-xs text-slate-500 underline underline-offset-2 hover:text-slate-900"
         >
           {sessions.length > 0 ? "編集" : "この日に記録する"}

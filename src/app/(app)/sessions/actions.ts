@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
 
-import { describeError, fail } from "@/lib/errors";
+import { describeError, fail, ok, type ActionResult } from "@/lib/errors";
 import { createClient } from "@/lib/supabase/server";
 import { isISODate } from "@/lib/date";
 import { checkLength, trimmed } from "@/lib/validation";
@@ -201,4 +201,88 @@ export async function findOrCreatePerson(
 
   revalidatePath("/people");
   return { ok: true, id: created.id, label: created.name };
+}
+
+export type QuickRowInput = {
+  gameId: string;
+  memo: string;
+  participantIds: string[];
+};
+
+/**
+ * クイック記録：その日の記録の後ろに追加する。
+ * 既存の記録は触らないので、編集画面の saveDay とは別物。
+ */
+export async function appendSessions(
+  date: string,
+  rows: QuickRowInput[],
+): Promise<ActionResult> {
+  if (!isISODate(date)) return fail("日付が正しくありません。");
+  if (rows.length === 0 || rows.some((row) => !row.gameId)) {
+    return fail("ゲームを選んでください。");
+  }
+  if (rows.length > MAX_ROWS_PER_DAY) {
+    return fail(`一度に登録できるのは${MAX_ROWS_PER_DAY}件までです。`);
+  }
+
+  const supabase = await createClient();
+
+  const { data: last, error: loadError } = await supabase
+    .from("session")
+    .select("sort_order")
+    .eq("played_on", date)
+    .order("sort_order", { ascending: false })
+    .limit(1);
+  if (loadError) return fail(describeError(loadError));
+
+  const base = (last?.[0]?.sort_order ?? -1) + 1;
+
+  const prepared = rows.map((row, index) => ({
+    id: randomUUID(),
+    played_on: date,
+    game_id: row.gameId,
+    sort_order: base + index,
+    memo: trimmed(row.memo),
+    participantIds: [...new Set(row.participantIds)],
+  }));
+
+  const { error: insertError } = await supabase.from("session").insert(
+    prepared.map((row) => ({
+      id: row.id,
+      played_on: row.played_on,
+      game_id: row.game_id,
+      sort_order: row.sort_order,
+      memo: row.memo,
+    })),
+  );
+  if (insertError) {
+    return fail(
+      describeError(insertError, {
+        "23503": "選んだゲームが見つかりません。画面を再読み込みしてください。",
+      }),
+    );
+  }
+
+  const pairs = prepared.flatMap((row) =>
+    row.participantIds.map((personId) => ({
+      session_id: row.id,
+      person_id: personId,
+    })),
+  );
+  if (pairs.length > 0) {
+    const { error } = await supabase.from("session_person").insert(pairs);
+    if (error) {
+      return fail(
+        describeError(error, {
+          "23503": "選んだ友人が見つかりません。画面を再読み込みしてください。",
+        }),
+      );
+    }
+  }
+
+  revalidatePath("/");
+  revalidatePath("/people");
+  revalidatePath("/games");
+  revalidatePath(`/sessions/${date}/edit`);
+  return ok("記録しました。");
 }

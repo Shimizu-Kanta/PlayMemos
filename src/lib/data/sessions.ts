@@ -208,3 +208,46 @@ export async function getSearchPool(limit = 1000): Promise<SessionDetail[]> {
   if (error) throw error;
   return (data ?? []).map(toSessionDetail);
 }
+
+/** いちばん最近の「参加者がいる記録」のメンバー（日付の制限なし） */
+export async function getLatestMembers(): Promise<PreviousMembers | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("session_detail")
+    .select("played_on, sort_order, participants")
+    .order("played_on", { ascending: false })
+    .order("sort_order", { ascending: false })
+    .limit(10);
+
+  if (error) throw error;
+
+  for (const row of data ?? []) {
+    const participants = toParticipants(row.participants);
+    if (participants.length > 0) {
+      return { playedOn: row.played_on, participants };
+    }
+  }
+  return null;
+}
+
+/** 最近遊んだゲーム（新しい順・重複なし） */
+export async function getRecentGames(limit = 4): Promise<GameOption[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("session_detail")
+    .select("game_id, game_title, played_on")
+    .order("played_on", { ascending: false })
+    .limit(60);
+
+  if (error) throw error;
+
+  const seen = new Set<string>();
+  const games: GameOption[] = [];
+  for (const row of data ?? []) {
+    if (seen.has(row.game_id)) continue;
+    seen.add(row.game_id);
+    games.push({ id: row.game_id, title: row.game_title });
+    if (games.length >= limit) break;
+  }
+  return games;
+}

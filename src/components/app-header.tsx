@@ -85,7 +85,7 @@ export function AppHeader({ displayName, avatarUrl }: Props) {
           </form>
 
           <Link
-            href="/sessions/new"
+            href="/?record=1"
             className="hidden rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 lg:inline-block"
           >
             ＋ 記録する

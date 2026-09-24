@@ -1,11 +1,20 @@
 import { getTags } from "@/lib/data/games";
 import { getPeople } from "@/lib/data/people";
 import {
+  getGameOptions,
+  getLatestMembers,
+  getRecentGames,
   getSearchPool,
   getSessionCount,
   getSessionsInRange,
 } from "@/lib/data/sessions";
-import { currentMonth, isMonthString, monthRange } from "@/lib/date";
+import {
+  currentMonth,
+  isISODate,
+  isMonthString,
+  monthRange,
+  todayISO,
+} from "@/lib/date";
 
 import { HomeView, type Filters } from "./home-view";
 
@@ -34,6 +43,11 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     personIds: list(params.people),
   };
 
+  // ?record=1 で今日、?record=YYYY-MM-DD でその日の記録シートを開く
+  const record = first(params.record);
+  const recordOpen = Boolean(record);
+  const recordDate = record && isISODate(record) ? record : todayISO();
+
   const { from, to } = monthRange(month);
   const [monthSessions, tags, people, total, searchPool] = await Promise.all([
     getSessionsInRange(from, to),
@@ -43,6 +57,15 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     // 検索していないときは読まない
     query ? getSearchPool() : Promise.resolve([]),
   ]);
+
+  // 記録シートを開くときだけ、その入力に必要なものを読む
+  const [games, recentGames, latestMembers] = recordOpen
+    ? await Promise.all([
+        getGameOptions(),
+        getRecentGames(),
+        getLatestMembers(),
+      ])
+    : [[], [], null];
 
   // 友人チップは「最後に遊んだ順」に並べる
   const sortedPeople = [...people].sort((a, b) => {
@@ -64,6 +87,11 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       people={sortedPeople}
       initialFilters={filters}
       hasAnySession={total > 0}
+      recordOpen={recordOpen}
+      recordDate={recordDate}
+      games={games}
+      recentGames={recentGames}
+      latestMembers={latestMembers}
     />
   );
 }

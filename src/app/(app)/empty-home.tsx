@@ -3,7 +3,13 @@ import Link from "next/link";
 import { WEEKDAY_LABELS, formatMonth, monthGrid, todayISO } from "@/lib/date";
 
 /** 記録が1件もないときのホーム。カレンダーは薄く見せて「ここに溜まる」ことだけ伝える */
-export function EmptyHome({ month }: { month: string }) {
+export function EmptyHome({
+  month,
+  recordHref,
+}: {
+  month: string;
+  recordHref: string;
+}) {
   const cells = monthGrid(month);
   const today = todayISO();
 
@@ -56,7 +62,7 @@ export function EmptyHome({ month }: { month: string }) {
           誰と・何を遊んだかを選ぶだけ。
         </span>
         <Link
-          href="/sessions/new"
+          href={recordHref}
           className="hidden rounded-lg bg-slate-900 px-[18px] py-2.5 text-sm font-medium text-white transition hover:bg-slate-700 lg:inline-block"
         >
           ＋ 今日の記録をつける
@@ -64,7 +70,7 @@ export function EmptyHome({ month }: { month: string }) {
       </div>
 
       <Link
-        href="/sessions/new"
+        href={recordHref}
         className="fixed right-4 bottom-[calc(76px+env(safe-area-inset-bottom,0px))] left-4 z-30 rounded-xl bg-slate-900 py-[15px] text-center text-base font-semibold text-white shadow-[0_6px_20px_rgba(15,23,42,.25)] lg:hidden"
       >
         ＋ 今日の記録をつける
