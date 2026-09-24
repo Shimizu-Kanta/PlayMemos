@@ -180,3 +180,31 @@ export async function getPreviousMembers(
   }
   return null;
 }
+
+/** 記録が1件でもあるか（初回の空状態の判定に使う） */
+export async function getSessionCount(): Promise<number> {
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("session")
+    .select("id", { count: "exact", head: true });
+
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/**
+ * 検索の対象にする記録。
+ * 個人用アプリなので、新しいものから一定件数を読んで画面側で絞り込む。
+ */
+export async function getSearchPool(limit = 1000): Promise<SessionDetail[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("session_detail")
+    .select("*")
+    .order("played_on", { ascending: false })
+    .order("sort_order", { ascending: true })
+    .limit(limit);
+
+  if (error) throw error;
+  return (data ?? []).map(toSessionDetail);
+}

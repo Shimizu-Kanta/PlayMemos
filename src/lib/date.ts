@@ -92,3 +92,62 @@ export function formatMonth(month: string) {
   const [y, m] = month.split("-").map(Number);
   return `${y}年${m}月`;
 }
+
+/** カレンダーの1マス */
+export type MonthCell = {
+  iso: string;
+  day: number;
+  /** 0=日 … 6=土 */
+  dow: number;
+  /** 表示中の月の日か（前後の月なら false） */
+  inMonth: boolean;
+  isToday: boolean;
+};
+
+/**
+ * 月表示のマス目を作る（日曜始まり）。
+ * 前後の月は週が埋まるぶんだけ含むので、月によって 4〜6 週になる。
+ */
+export function monthGrid(month: string): MonthCell[] {
+  const [y, m] = month.split("-").map(Number);
+  const first = new Date(y, m - 1, 1);
+  const last = new Date(y, m, 0);
+
+  const start = new Date(first);
+  start.setDate(start.getDate() - start.getDay());
+
+  const end = new Date(last);
+  end.setDate(end.getDate() + (6 - end.getDay()));
+
+  const today = todayISO();
+  const cells: MonthCell[] = [];
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const iso = toISODate(d);
+    cells.push({
+      iso,
+      day: d.getDate(),
+      dow: d.getDay(),
+      inMonth: d.getMonth() === m - 1,
+      isToday: iso === today,
+    });
+  }
+  return cells;
+}
+
+/** 曜日の頭文字（日曜始まり） */
+export const WEEKDAY_LABELS = WEEKDAYS;
+
+/** その日から今日までの日数（今日なら 0） */
+export function daysSince(iso: string) {
+  const from = parseISODate(iso).getTime();
+  const to = parseISODate(todayISO()).getTime();
+  return Math.round((to - from) / 86_400_000);
+}
+
+/** "3日前" のような表示（今日・昨日は特別扱い） */
+export function relativeDayLabel(iso: string) {
+  const n = daysSince(iso);
+  if (n <= 0) return "今日";
+  if (n === 1) return "昨日";
+  return `${n}日前`;
+}

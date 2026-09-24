@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { redirect } from "next/navigation";
 
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, BottomTabBar } from "@/components/app-header";
 import { getCurrentUser } from "@/lib/supabase/server";
 
 /** Discord のプロフィールから表示名とアイコンを取り出す */
@@ -31,9 +31,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col">
       <AppHeader displayName={displayName} avatarUrl={avatarUrl} />
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-[calc(96px+env(safe-area-inset-bottom,0px))] lg:px-8 lg:pb-8">
         {children}
       </main>
+      <BottomTabBar />
     </div>
   );
 }
