@@ -1,5 +1,5 @@
 import { getTags } from "@/lib/data/games";
-import { getPeople } from "@/lib/data/people";
+import { byLastPlayed, getPeople } from "@/lib/data/people";
 import {
   getGameOptions,
   getLatestMembers,
@@ -68,14 +68,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     : [[], [], null];
 
   // 友人チップは「最後に遊んだ順」に並べる
-  const sortedPeople = [...people].sort((a, b) => {
-    if (a.lastPlayedOn === b.lastPlayedOn) {
-      return a.name.localeCompare(b.name, "ja");
-    }
-    if (!a.lastPlayedOn) return 1;
-    if (!b.lastPlayedOn) return -1;
-    return a.lastPlayedOn < b.lastPlayedOn ? 1 : -1;
-  });
+  const sortedPeople = [...people].sort(byLastPlayed);
 
   return (
     <HomeView

@@ -13,33 +13,62 @@ export type PersonWithStats = {
   playCount: number;
   /** 最後に一緒に遊んだ日（YYYY-MM-DD） */
   lastPlayedOn: string | null;
+  /** その人といちばん多く遊んだゲーム */
+  topGame: string | null;
 };
 
 export async function getPeople(): Promise<PersonWithStats[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("person")
-    .select("id, name, discord_id, memo, session_person(session(played_on))");
+    .select(
+      "id, name, discord_id, memo, session_person(session(played_on, game(title)))",
+    );
 
   if (error) throw error;
 
   return (data ?? [])
     .map((row) => {
-      const dates = (row.session_person ?? [])
-        .map((sp) => sp.session?.played_on)
-        .filter((d): d is string => typeof d === "string");
+      const played = (row.session_person ?? []).flatMap((sp) =>
+        sp.session ? [sp.session] : [],
+      );
+
+      const counts = new Map<string, number>();
+      for (const s of played) {
+        const title = s.game?.title;
+        if (title) counts.set(title, (counts.get(title) ?? 0) + 1);
+      }
+      const topGame =
+        [...counts.entries()].sort(
+          (a, b) => b[1] - a[1] || byName(a[0], b[0]),
+        )[0]?.[0] ?? null;
 
       return {
         id: row.id,
         name: row.name,
         discord_id: row.discord_id,
         memo: row.memo,
-        playCount: dates.length,
+        playCount: played.length,
         // YYYY-MM-DD は文字列比較で日付順になる
-        lastPlayedOn: dates.length > 0 ? dates.reduce((a, b) => (a > b ? a : b)) : null,
+        lastPlayedOn:
+          played.length > 0
+            ? played.reduce(
+                (a, s) => (s.played_on > a ? s.played_on : a),
+                played[0].played_on,
+              )
+            : null,
+        topGame,
       };
     })
     .sort((a, b) => byName(a.name, b.name));
+}
+
+/** 最後に遊んだ日が新しい順（遊んだことがない人は最後） */
+export function byLastPlayed(a: PersonWithStats, b: PersonWithStats) {
+  if (a.lastPlayedOn === b.lastPlayedOn) return byName(a.name, b.name);
+  if (!a.lastPlayedOn) return 1;
+  if (!b.lastPlayedOn) return -1;
+  return a.lastPlayedOn < b.lastPlayedOn ? 1 : -1;
 }
 
 /** 友人1件を取得する（見つからなければ null） */

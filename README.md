@@ -61,13 +61,17 @@ http://localhost:3000 を開く。
 | パス | 内容 |
 | --- | --- |
 | `/login` | Discord ログイン |
-| `/` | カレンダー（月表示）。日付クリックでその日の記録を表示。タグ・ゲーム・参加者で絞り込み |
+| `/` | ホーム。月カレンダーと記録リストを並べて表示（スマホは切り替え）。友人・タグでの絞り込み、行を押すとその日の記録の詳細 |
+| `/?record=1` | クイック記録シート（PC はモーダル、スマホは下からのシート）。`?record=YYYY-MM-DD` で日付を指定 |
+| `/?q=...` | ゲーム名・タグ名・参加者名・メモを横断した検索（全期間が対象） |
+| `/sessions/[date]/edit` | その日の記録をまとめて編集（1行 = ゲーム＋参加者＋メモ。並び替えと削除もここ） |
 | `/sessions/new` | 日付を決めて編集画面へ送る入り口 |
-| `/sessions/[date]/edit` | その日の記録をまとめて編集（1行 = ゲーム＋参加者＋メモ） |
 | `/games` | ゲーム一覧・タグの付け外し・タグ管理 |
 | `/games/[id]` | ゲームの詳細（名前・タグの編集、よく一緒に遊ぶ人、遊んだ記録） |
-| `/people` | 友人一覧（名前・回数・最後に遊んだ日） |
-| `/people/[id]` | 友人の詳細（名前・Discord ID・メモの編集と、一緒に遊んだ記録） |
+| `/people` | 友人一覧（最後に遊んだ日が新しい順。行を押すとその人で絞り込んだホームへ） |
+| `/people/[id]` | 友人の詳細（名前・Discord ID・メモの編集、削除、一緒に遊んだ記録） |
+
+ナビは PC がヘッダー（記録・友人・ゲーム）、スマホが画面下のタブバー。
 
 ## ディレクトリ構成
 
@@ -80,8 +84,13 @@ src/
     auth/callback/route.ts  OAuth のコールバック
     auth/actions.ts         ログアウト用の Server Action
     (app)/                  ログイン必須の画面群（共通ヘッダー付き）
-      page.tsx              カレンダー
-      calendar-view.tsx     FullCalendar と絞り込み（クライアント）
+      page.tsx              ホーム
+      home-view.tsx         カレンダー・リスト・絞り込みのまとめ役（クライアント）
+      month-calendar.tsx    自前の月カレンダー（PC 用とスマホ用）
+      session-list.tsx      新しい順の記録リスト
+      day-detail.tsx        その日の記録の詳細
+      record-sheet.tsx      クイック記録シート
+      empty-home.tsx        記鄲0件のときの表示
       games/ people/ sessions/
   components/               共通コンポーネント
   lib/
@@ -105,4 +114,7 @@ supabase/migrations/        DB スキーマ（変更しないこと）
   PostgREST は複数文を 1 トランザクションにできないため、
   削除 → `session` の upsert → `session_person` の貼り直し、の順に実行している。
 - 「今日」の判定は `Asia/Tokyo` 固定（`src/lib/date.ts`）。
-- FullCalendar は v6.1.21（v7 は daygrid がまだ rc のため）。
+- カレンダーは CSS Grid の自前実装。セルにゲーム名と参加者アイコンを出すため、
+  FullCalendar を使うより直接書いたほうが簡単だった（デザイン案の指示でも外している）。
+- 検索はサーバーで直近 1000 件を読んでから画面側で絞り込む（個人用で件数が少ないため）。
+- `Button` は `inline-flex` を含むので、`hidden` で隠すときは親要素に当てる。
